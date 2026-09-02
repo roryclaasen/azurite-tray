@@ -3,7 +3,9 @@
 namespace AzuriteTray.App;
 
 using System;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using H.NotifyIcon.Core;
@@ -16,19 +18,23 @@ internal sealed class TrayApplication : IDisposable
     private readonly PopupMenuItem stopItem;
     private readonly Icon icon;
     private readonly Timer statusTimer;
+    private readonly EventWaitHandle activationEvent;
     private readonly ManualResetEventSlim exitSignal = new();
     private readonly SemaphoreSlim operationLock = new(1, 1);
     private readonly CancellationTokenSource shutdownTokenSource = new();
-    private readonly RegisteredWaitHandle activationRegistration;
 
+    private RegisteredWaitHandle? activationRegistration;
     private bool statusErrorReported;
     private int disposed;
 
     public TrayApplication(AzuriteProcessManager processManager, EventWaitHandle activationEvent)
     {
         this.processManager = processManager;
+        this.activationEvent = activationEvent;
 
-        icon = new Icon(H.Resources.icon_ico.AsStream());
+        using Stream iconStream = H.Resources.icon_ico.AsStream();
+        using var sourceIcon = new Icon(iconStream);
+        icon = (Icon)sourceIcon.Clone();
 
         startItem = new PopupMenuItem("Start Azurite", (_, _) => _ = StartAsync());
         stopItem = new PopupMenuItem("Stop Azurite", (_, _) => _ = StopAsync());
@@ -54,26 +60,24 @@ internal sealed class TrayApplication : IDisposable
             this,
             Timeout.InfiniteTimeSpan,
             Timeout.InfiniteTimeSpan);
-        activationRegistration = ThreadPool.RegisterWaitForSingleObject(
-            activationEvent,
-            static (state, timedOut) =>
-            {
-                if (!timedOut)
-                {
-                    ((TrayApplication)state!).ShowNotification(
-                        "Azurite Tray is already running.",
-                        NotificationIcon.Info);
-                }
-            },
-            this,
-            Timeout.Infinite,
-            executeOnlyOnce: false);
     }
 
     public void Run()
     {
         ObjectDisposedException.ThrowIf(disposed != 0, this);
         trayIcon.Create();
+        activationRegistration = ThreadPool.RegisterWaitForSingleObject(
+            activationEvent,
+            static (state, timedOut) =>
+            {
+                if (!timedOut)
+                {
+                    ((TrayApplication)state!).NotifyAlreadyRunning();
+                }
+            },
+            this,
+            Timeout.Infinite,
+            executeOnlyOnce: false);
         statusTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(1));
         exitSignal.Wait();
     }
@@ -87,7 +91,7 @@ internal sealed class TrayApplication : IDisposable
 
         shutdownTokenSource.Cancel();
         statusTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        activationRegistration.Unregister(null);
+        activationRegistration?.Unregister(null);
         statusTimer.Dispose();
         trayIcon.Dispose();
         icon.Dispose();
@@ -98,10 +102,7 @@ internal sealed class TrayApplication : IDisposable
 
     private async Task StartAsync()
     {
-        if (!await operationLock.WaitAsync(0).ConfigureAwait(false))
-        {
-            return;
-        }
+        await operationLock.WaitAsync().ConfigureAwait(false);
 
         SetOperationInProgress(true);
 
@@ -142,10 +143,7 @@ internal sealed class TrayApplication : IDisposable
 
     private async Task<bool> StopAzuriteAsync(bool showNotification)
     {
-        if (!await operationLock.WaitAsync(0).ConfigureAwait(false))
-        {
-            return false;
-        }
+        await operationLock.WaitAsync().ConfigureAwait(false);
 
         SetOperationInProgress(true);
 
@@ -190,14 +188,14 @@ internal sealed class TrayApplication : IDisposable
             bool running = await Task.Run(processManager.IsRunning);
             startItem.Enabled = !running;
             stopItem.Enabled = running;
-            trayIcon.ToolTip = running ? "Azurite - Running" : "Azurite - Stopped";
+            trayIcon.UpdateToolTip(running ? "Azurite - Running" : "Azurite - Stopped");
             statusErrorReported = false;
         }
         catch (Exception exception)
         {
             startItem.Enabled = false;
             stopItem.Enabled = false;
-            trayIcon.ToolTip = "Azurite - Status unavailable";
+            trayIcon.UpdateToolTip("Azurite - Status unavailable");
 
             if (!statusErrorReported)
             {
@@ -222,6 +220,23 @@ internal sealed class TrayApplication : IDisposable
         if (disposed == 0)
         {
             trayIcon.ShowNotification("Azurite", message, icon);
+        }
+    }
+
+    private void NotifyAlreadyRunning()
+    {
+        if (disposed != 0 || !trayIcon.IsCreated)
+        {
+            return;
+        }
+
+        try
+        {
+            ShowNotification("Azurite Tray is already running.", NotificationIcon.Info);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ObjectDisposedException)
+        {
+            Debug.WriteLine(exception);
         }
     }
 

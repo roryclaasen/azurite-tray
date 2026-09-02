@@ -4,7 +4,7 @@
     <Authors>Rory Claasen</Authors>
 
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <RepositoryUrl>https://github.com/roryclaasen/advent</RepositoryUrl>
+    <RepositoryUrl>https://github.com/roryclaasen/azurite-tray</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
