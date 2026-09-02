@@ -22,7 +22,13 @@ internal static class Program
             return;
         }
 
-        using var application = new TrayApplication(new AzuriteProcessManager(), activationEvent);
+        using var application = new TrayApplication(
+            [
+                new NpmAzuriteProcessManager(),
+                new VisualStudioAzuriteProcessManager()
+            ],
+            new AzuriteSourcePreference(),
+            activationEvent);
         application.Run();
         GC.KeepAlive(mutex);
     }

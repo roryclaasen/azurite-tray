@@ -16,23 +16,29 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
 
-internal sealed class AzuriteProcessManager
+internal abstract class AzuriteProcessManager
 {
-    private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
     private const uint MaximumCommandLineBytes = 1024 * 1024;
 
-    private readonly string[] azuriteScriptCandidates;
-
-    public AzuriteProcessManager()
+    protected AzuriteProcessManager(AzuriteSource source, string displayName)
     {
+        Source = source;
+        DisplayName = displayName;
         DataDirectory = @"C:\azurite";
         DebugLogPath = Path.Combine(DataDirectory, "debug.log");
-        azuriteScriptCandidates = [.. FindAzuriteScriptCandidates()];
     }
+
+    public AzuriteSource Source { get; }
+
+    public string DisplayName { get; }
 
     public string DataDirectory { get; }
 
     public string DebugLogPath { get; }
+
+    public abstract bool IsAvailable { get; }
+
+    protected abstract string ProcessName { get; }
 
     public bool IsRunning() => GetAzuriteProcessIds().Count > 0;
 
@@ -43,24 +49,23 @@ internal sealed class AzuriteProcessManager
             return false;
         }
 
-        string azuriteScriptPath = azuriteScriptCandidates.FirstOrDefault(File.Exists)
-            ?? throw new FileNotFoundException(
-                "Azurite was not found. Install it with 'npm install --global azurite'.");
-        string nodePath = FindExecutable("node.exe")
-            ?? throw new FileNotFoundException(
-                "Node.js was not found on PATH. Install Node.js before starting Azurite.");
-
+        AzuriteLaunchTarget target = ResolveLaunchTarget();
         Directory.CreateDirectory(DataDirectory);
 
         var startInfo = new ProcessStartInfo
         {
-            FileName = nodePath,
+            FileName = target.FileName,
             WorkingDirectory = DataDirectory,
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden
         };
-        startInfo.ArgumentList.Add(azuriteScriptPath);
+
+        foreach (string argument in target.Arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
         startInfo.ArgumentList.Add("--skipApiVersionCheck");
         startInfo.ArgumentList.Add("-s");
         startInfo.ArgumentList.Add("-l");
@@ -69,9 +74,9 @@ internal sealed class AzuriteProcessManager
         startInfo.ArgumentList.Add(DebugLogPath);
 
         using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Node.js did not start.");
+            ?? throw new InvalidOperationException($"{DisplayName} Azurite did not start.");
 
-        if (process.WaitForExit(TimeSpan.FromSeconds(1)))
+        if (process.WaitForExit(milliseconds: 1000))
         {
             throw new InvalidOperationException(
                 $"Azurite exited during startup with code {process.ExitCode.ToString(CultureInfo.InvariantCulture)}. " +
@@ -115,9 +120,48 @@ internal sealed class AzuriteProcessManager
         return true;
     }
 
+    protected abstract AzuriteLaunchTarget ResolveLaunchTarget();
+
+    protected abstract IEnumerable<string> GetIdentityPaths();
+
+    protected static string? FindExecutable(string fileName)
+    {
+        foreach (string directory in GetPathDirectories())
+        {
+            string path = Path.Combine(directory, fileName);
+
+            if (File.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    protected static IEnumerable<string> GetPathDirectories()
+    {
+        string? path = Environment.GetEnvironmentVariable("PATH");
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            yield break;
+        }
+
+        foreach (string entry in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            string directory = Environment.ExpandEnvironmentVariables(entry.Trim().Trim('"'));
+
+            if (Directory.Exists(directory))
+            {
+                yield return directory;
+            }
+        }
+    }
+
     private List<int> GetAzuriteProcessIds()
     {
-        string[] normalizedPaths = azuriteScriptCandidates
+        string[] normalizedPaths = GetIdentityPaths()
             .Where(File.Exists)
             .Select(NormalizePath)
             .ToArray();
@@ -129,7 +173,7 @@ internal sealed class AzuriteProcessManager
 
         var processIds = new List<int>();
 
-        foreach (Process process in Process.GetProcessesByName("node"))
+        foreach (Process process in Process.GetProcessesByName(ProcessName))
         {
             using (process)
             {
@@ -151,64 +195,6 @@ internal sealed class AzuriteProcessManager
         }
 
         return processIds;
-    }
-
-    private static HashSet<string> FindAzuriteScriptCandidates()
-    {
-        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
-        if (!string.IsNullOrWhiteSpace(appData))
-        {
-            candidates.Add(Path.GetFullPath(Path.Combine(appData, "npm", AzuriteScriptRelativePath)));
-        }
-
-        foreach (string directory in GetPathDirectories())
-        {
-            string commandPath = Path.Combine(directory, "azurite.cmd");
-
-            if (File.Exists(commandPath))
-            {
-                candidates.Add(Path.GetFullPath(Path.Combine(directory, AzuriteScriptRelativePath)));
-            }
-        }
-
-        return candidates;
-    }
-
-    private static string? FindExecutable(string fileName)
-    {
-        foreach (string directory in GetPathDirectories())
-        {
-            string path = Path.Combine(directory, fileName);
-
-            if (File.Exists(path))
-            {
-                return path;
-            }
-        }
-
-        return null;
-    }
-
-    private static IEnumerable<string> GetPathDirectories()
-    {
-        string? path = Environment.GetEnvironmentVariable("PATH");
-
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            yield break;
-        }
-
-        foreach (string entry in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            string directory = Environment.ExpandEnvironmentVariables(entry.Trim().Trim('"'));
-
-            if (Directory.Exists(directory))
-            {
-                yield return directory;
-            }
-        }
     }
 
     private static string NormalizePath(string value) =>
@@ -264,4 +250,6 @@ internal sealed class AzuriteProcessManager
                 : new string(commandLine->Buffer, 0, commandLine->Length / sizeof(char));
         }
     }
+
+    protected sealed record AzuriteLaunchTarget(string FileName, IReadOnlyList<string> Arguments);
 }
