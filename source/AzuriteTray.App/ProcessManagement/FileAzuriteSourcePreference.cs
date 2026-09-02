@@ -6,7 +6,7 @@ using System;
 using System.IO;
 using AzuriteTray.Core;
 
-internal sealed class AzuriteSourcePreference
+internal sealed class FileAzuriteSourcePreference : IAzuriteSourcePreference
 {
     private const AzuriteSource DefaultPreference = AzuriteSource.VisualStudio;
 

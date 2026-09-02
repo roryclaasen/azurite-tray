@@ -17,7 +17,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
 
-internal abstract class AzuriteProcessManager
+internal abstract class AzuriteProcessManager : IAzuriteProcessManager
 {
     private const uint MaximumCommandLineBytes = 1024 * 1024;
 

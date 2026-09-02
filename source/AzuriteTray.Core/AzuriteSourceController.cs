@@ -1,19 +1,18 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
-namespace AzuriteTray.App.ProcessManagement;
+namespace AzuriteTray.Core;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AzuriteTray.Core;
 
-internal sealed class AzuriteSourceController
+public sealed class AzuriteSourceController
 {
-    private readonly AzuriteSourcePreference sourcePreference;
+    private readonly IAzuriteSourcePreference sourcePreference;
 
-    public AzuriteSourceController(IEnumerable<AzuriteProcessManager> processManagers, AzuriteSourcePreference sourcePreference)
+    public AzuriteSourceController(IEnumerable<IAzuriteProcessManager> processManagers, IAzuriteSourcePreference sourcePreference)
     {
         this.ProcessManagers = processManagers.ToDictionary(manager => manager.Source);
         ArgumentOutOfRangeException.ThrowIfZero(this.ProcessManagers.Count, nameof(processManagers));
@@ -22,13 +21,13 @@ internal sealed class AzuriteSourceController
         this.SelectedSource = this.SelectInitialSource(sourcePreference.Load());
     }
 
-    public IReadOnlyDictionary<AzuriteSource, AzuriteProcessManager> ProcessManagers { get; }
+    public IReadOnlyDictionary<AzuriteSource, IAzuriteProcessManager> ProcessManagers { get; }
 
     public AzuriteSource SelectedSource { get; private set; }
 
-    public AzuriteProcessManager SelectedProcessManager => this.ProcessManagers[this.SelectedSource];
+    public IAzuriteProcessManager SelectedProcessManager => this.ProcessManagers[this.SelectedSource];
 
-    public async Task<AzuriteProcessManager?> ChangeSourceAsync(AzuriteSource source, CancellationToken token)
+    public async Task<IAzuriteProcessManager?> ChangeSourceAsync(AzuriteSource source, CancellationToken token)
     {
         if (source == this.SelectedSource)
         {
@@ -84,7 +83,7 @@ internal sealed class AzuriteSourceController
 
     private AzuriteSource SelectInitialSource(AzuriteSource preferredSource)
     {
-        if (this.ProcessManagers.TryGetValue(preferredSource, out AzuriteProcessManager? preferredManager) && preferredManager.IsAvailable)
+        if (this.ProcessManagers.TryGetValue(preferredSource, out IAzuriteProcessManager? preferredManager) && preferredManager.IsAvailable)
         {
             return preferredSource;
         }
@@ -96,8 +95,8 @@ internal sealed class AzuriteSourceController
     private async Task<Exception> RollbackSourceChangeAsync(
         Exception switchException,
         AzuriteSource previousSource,
-        AzuriteProcessManager previousManager,
-        AzuriteProcessManager newManager,
+        IAzuriteProcessManager previousManager,
+        IAzuriteProcessManager newManager,
         bool restart,
         bool newManagerStarted,
         bool preferenceWriteAttempted,

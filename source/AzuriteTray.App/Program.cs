@@ -28,7 +28,7 @@ internal static class Program
                 new NpmAzuriteProcessManager(),
                 new VisualStudioAzuriteProcessManager()
             ],
-            new AzuriteSourcePreference(),
+            new FileAzuriteSourcePreference(),
             activationEvent);
         application.Run();
         GC.KeepAlive(mutex);

@@ -5,20 +5,19 @@ namespace AzuriteTray.App;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using AzuriteTray.App.ProcessManagement;
 using AzuriteTray.Core;
 using H.NotifyIcon.Core;
 
 internal sealed class AzuriteTrayView : IDisposable
 {
-    private readonly IReadOnlyDictionary<AzuriteSource, AzuriteProcessManager> processManagers;
+    private readonly IReadOnlyDictionary<AzuriteSource, IAzuriteProcessManager> processManagers;
     private readonly IReadOnlyDictionary<AzuriteSource, PopupMenuItem> sourceItems;
     private readonly TrayIconWithContextMenu trayIcon;
     private readonly PopupMenuItem startItem;
     private readonly PopupMenuItem stopItem;
     private readonly Icon icon;
 
-    public AzuriteTrayView(IReadOnlyDictionary<AzuriteSource, AzuriteProcessManager> processManagers, Action start, Action stop, Action<AzuriteSource> changeSource, Action exit)
+    public AzuriteTrayView(IReadOnlyDictionary<AzuriteSource, IAzuriteProcessManager> processManagers, Action start, Action stop, Action<AzuriteSource> changeSource, Action exit)
     {
         this.processManagers = processManagers;
         this.startItem = new PopupMenuItem("Start Azurite", (_, _) => start.Invoke());
@@ -26,7 +25,7 @@ internal sealed class AzuriteTrayView : IDisposable
 
         var sourceMenu = new PopupSubMenu("Azurite source");
         var sourceItems = new Dictionary<AzuriteSource, PopupMenuItem>();
-        foreach (AzuriteProcessManager manager in processManagers.Values)
+        foreach (IAzuriteProcessManager manager in processManagers.Values)
         {
             var sourceItem = new PopupMenuItem(manager.DisplayName, (_, _) => changeSource.Invoke(manager.Source));
             sourceItems.Add(manager.Source, sourceItem);
@@ -73,7 +72,7 @@ internal sealed class AzuriteTrayView : IDisposable
         }
     }
 
-    public void UpdateStatus(AzuriteSource selectedSource, AzuriteProcessManager manager, bool running)
+    public void UpdateStatus(AzuriteSource selectedSource, IAzuriteProcessManager manager, bool running)
     {
         this.startItem.Enabled = !running && manager.IsAvailable;
         this.stopItem.Enabled = running;

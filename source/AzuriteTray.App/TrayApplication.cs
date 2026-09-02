@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using AzuriteTray.App.ProcessManagement;
 using AzuriteTray.Core;
 using H.NotifyIcon.Core;
 
@@ -25,7 +24,7 @@ internal sealed class TrayApplication : IDisposable
     private bool statusErrorReported;
     private int disposed;
 
-    public TrayApplication(IEnumerable<AzuriteProcessManager> processManagers, AzuriteSourcePreference sourcePreference, EventWaitHandle activationEvent)
+    public TrayApplication(IEnumerable<IAzuriteProcessManager> processManagers, IAzuriteSourcePreference sourcePreference, EventWaitHandle activationEvent)
     {
         this.activationEvent = activationEvent;
         this.sourceController = new AzuriteSourceController(processManagers, sourcePreference);
