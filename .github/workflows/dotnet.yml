@@ -41,7 +41,7 @@ jobs:
         if: ${{ !cancelled() && github.repository == 'roryclaasen/azurite-tray' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         with:
           name: Azurite Tray Tests
-          path: ${{ github.workspace }}/artifacts/test-results/*.trx
+          path: artifacts/test-results/*.trx
           reporter: dotnet-trx
           list-tests: failed
 
