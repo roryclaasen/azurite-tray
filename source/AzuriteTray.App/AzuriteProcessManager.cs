@@ -21,14 +21,14 @@ internal sealed class AzuriteProcessManager
     private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
     private const uint MaximumCommandLineBytes = 1024 * 1024;
 
-    private readonly string[] _azuriteScriptCandidates;
+    private readonly string[] azuriteScriptCandidates;
 
     public AzuriteProcessManager()
     {
         DataDirectory = @"C:\azurite";
         DebugLogPath = Path.Combine(DataDirectory, "debug.log");
-        _azuriteScriptCandidates = FindAzuriteScriptCandidates().ToArray();
-        IconPath = _azuriteScriptCandidates
+        azuriteScriptCandidates = FindAzuriteScriptCandidates().ToArray();
+        IconPath = azuriteScriptCandidates
             .Select(static path => Path.GetFullPath(
                 Path.Combine(Path.GetDirectoryName(path)!, @"..\..\icon.ico")))
             .FirstOrDefault(File.Exists);
@@ -49,7 +49,7 @@ internal sealed class AzuriteProcessManager
             return false;
         }
 
-        string azuriteScriptPath = _azuriteScriptCandidates.FirstOrDefault(File.Exists)
+        string azuriteScriptPath = azuriteScriptCandidates.FirstOrDefault(File.Exists)
             ?? throw new FileNotFoundException(
                 "Azurite was not found. Install it with 'npm install --global azurite'.");
         string nodePath = FindExecutable("node.exe")
@@ -116,7 +116,7 @@ internal sealed class AzuriteProcessManager
 
     private List<int> GetAzuriteProcessIds()
     {
-        string[] normalizedPaths = _azuriteScriptCandidates
+        string[] normalizedPaths = azuriteScriptCandidates
             .Where(File.Exists)
             .Select(NormalizePath)
             .ToArray();

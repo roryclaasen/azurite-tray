@@ -14,10 +14,7 @@ internal static class Program
     private static void Main()
     {
         using var mutex = new Mutex(initiallyOwned: true, MutexName, out bool createdNew);
-        using var activationEvent = new EventWaitHandle(
-            initialState: false,
-            EventResetMode.AutoReset,
-            ActivationEventName);
+        using var activationEvent = new EventWaitHandle(initialState: false, EventResetMode.AutoReset, ActivationEventName);
 
         if (!createdNew)
         {
@@ -25,9 +22,7 @@ internal static class Program
             return;
         }
 
-        using var application = new TrayApplication(
-            new AzuriteProcessManager(),
-            activationEvent);
+        using var application = new TrayApplication(new AzuriteProcessManager(), activationEvent);
         application.Run();
         GC.KeepAlive(mutex);
     }
