@@ -38,7 +38,7 @@ jobs:
           name: test-results
           path: ${{ github.workspace }}/artifacts/test-results/*.trx
       - uses: dorny/test-reporter@v3
-        if: ${{ !cancelled() && github.repository == 'roryclaasen/azurite-tray' }}
+        if: ${{ !cancelled() && github.repository == 'roryclaasen/azurite-tray' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         with:
           name: Azurite Tray Tests
           path: ${{ github.workspace }}/artifacts/test-results/*.trx
