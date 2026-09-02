@@ -6,19 +6,19 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
+using Windows.Wdk.System.Threading;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Threading;
 
 namespace AzuriteTray.App;
 
-internal sealed partial class AzuriteProcessManager
+internal sealed class AzuriteProcessManager
 {
     private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
-    private const uint ProcessQueryLimitedInformation = 0x1000;
-    private const int ProcessCommandLineInformation = 60;
-    private const int StatusInfoLengthMismatch = unchecked((int)0xC0000004);
     private const uint MaximumCommandLineBytes = 1024 * 1024;
 
     private readonly string[] _azuriteScriptCandidates;
@@ -214,11 +214,11 @@ internal sealed partial class AzuriteProcessManager
         value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
             .Replace(@"\\", @"\", StringComparison.Ordinal);
 
-    private static string? TryGetCommandLine(int processId)
+    private static unsafe string? TryGetCommandLine(int processId)
     {
-        using SafeProcessHandle processHandle = OpenProcess(
-            ProcessQueryLimitedInformation,
-            inheritHandle: false,
+        using SafeFileHandle processHandle = PInvoke.OpenProcess_SafeHandle(
+            PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION,
+            bInheritHandle: false,
             (uint)processId);
 
         if (processHandle.IsInvalid)
@@ -226,66 +226,41 @@ internal sealed partial class AzuriteProcessManager
             return null;
         }
 
-        int status = NtQueryInformationProcess(
-            processHandle,
-            ProcessCommandLineInformation,
-            processInformation: 0,
-            processInformationLength: 0,
-            out uint requiredLength);
+        var process = (HANDLE)processHandle.DangerousGetHandle();
+        uint requiredLength = 0;
 
-        if (status != StatusInfoLengthMismatch ||
+        if (Windows.Wdk.PInvoke.NtQueryInformationProcess(
+                process,
+                PROCESSINFOCLASS.ProcessCommandLineInformation,
+                ProcessInformation: null,
+                ProcessInformationLength: 0,
+                ref requiredLength) != NTSTATUS.STATUS_INFO_LENGTH_MISMATCH ||
             requiredLength == 0 ||
             requiredLength > MaximumCommandLineBytes)
         {
             return null;
         }
 
-        nint buffer = Marshal.AllocHGlobal((int)requiredLength);
+        var buffer = new byte[requiredLength];
 
-        try
+        fixed (byte* processInformation = buffer)
         {
-            status = NtQueryInformationProcess(
-                processHandle,
-                ProcessCommandLineInformation,
-                buffer,
+            NTSTATUS status = Windows.Wdk.PInvoke.NtQueryInformationProcess(
+                process,
+                PROCESSINFOCLASS.ProcessCommandLineInformation,
+                processInformation,
                 requiredLength,
-                out _);
+                ref requiredLength);
 
-            if (status < 0)
+            if (status.SeverityCode != NTSTATUS.Severity.Success)
             {
                 return null;
             }
 
-            UnicodeString commandLine = Marshal.PtrToStructure<UnicodeString>(buffer);
-            return commandLine.Buffer == 0
+            var commandLine = (UNICODE_STRING*)processInformation;
+            return commandLine->Length == 0
                 ? null
-                : Marshal.PtrToStringUni(commandLine.Buffer, commandLine.Length / sizeof(char));
+                : new string(commandLine->Buffer, 0, commandLine->Length / sizeof(char));
         }
-        finally
-        {
-            Marshal.FreeHGlobal(buffer);
-        }
-    }
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    private static partial SafeProcessHandle OpenProcess(
-        uint processAccess,
-        [MarshalAs(UnmanagedType.Bool)] bool inheritHandle,
-        uint processId);
-
-    [LibraryImport("ntdll.dll")]
-    private static partial int NtQueryInformationProcess(
-        SafeProcessHandle processHandle,
-        int processInformationClass,
-        nint processInformation,
-        uint processInformationLength,
-        out uint returnLength);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private readonly struct UnicodeString
-    {
-        public readonly ushort Length;
-        public readonly ushort MaximumLength;
-        public readonly nint Buffer;
     }
 }

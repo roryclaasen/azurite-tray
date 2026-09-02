@@ -1,0 +1,4 @@
+NtQueryInformationProcess
+OpenProcess
+STATUS_INFO_LENGTH_MISMATCH
+UNICODE_STRING

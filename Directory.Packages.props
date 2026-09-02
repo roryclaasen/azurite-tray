@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageVersion Include="H.NotifyIcon" Version="2.4.1" />
+    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.330" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.91" />
     <PackageVersion Include="Roslynator.Analyzers" Version="5.0.0" />
     <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
