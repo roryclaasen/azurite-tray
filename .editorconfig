@@ -93,6 +93,11 @@ dotnet_style_allow_multiple_blank_lines_experimental = true:silent
 [*.cs]
 file_header_template = Copyright (c) Rory Claasen. All rights reserved.
 dotnet_diagnostic.IDE0073.severity = warning
+dotnet_style_qualification_for_field = true:suggestion
+dotnet_style_qualification_for_property = true:suggestion
+dotnet_style_qualification_for_method = true:suggestion
+dotnet_style_qualification_for_event = true:suggestion
+dotnet_diagnostic.IDE0009.severity = suggestion
 csharp_indent_labels = one_less_than_current
 csharp_using_directive_placement = inside_namespace:suggestion
 dotnet_sort_system_directives_first = true

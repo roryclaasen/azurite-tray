@@ -14,19 +14,19 @@ internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(Azurite
 
     private readonly string[] azuriteScriptCandidates = [.. FindAzuriteScriptCandidates()];
 
-    public override bool IsAvailable => azuriteScriptCandidates.Any(File.Exists) && FindExecutable("node.exe") is not null;
+    public override bool IsAvailable => this.azuriteScriptCandidates.Any(File.Exists) && FindExecutable("node.exe") is not null;
 
     protected override string ProcessName => "node";
 
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {
-        var azuriteScriptPath = azuriteScriptCandidates.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("npm Azurite was not found. Install it with 'npm install --global azurite'.");
+        var azuriteScriptPath = this.azuriteScriptCandidates.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("npm Azurite was not found. Install it with 'npm install --global azurite'.");
         var nodePath = FindExecutable("node.exe") ?? throw new FileNotFoundException("Node.js was not found on PATH. Install Node.js before starting npm Azurite.");
 
         return new AzuriteLaunchTarget(nodePath, [azuriteScriptPath]);
     }
 
-    protected override IEnumerable<string> GetIdentityPaths() => azuriteScriptCandidates;
+    protected override IEnumerable<string> GetIdentityPaths() => this.azuriteScriptCandidates;
 
     private static HashSet<string> FindAzuriteScriptCandidates()
     {

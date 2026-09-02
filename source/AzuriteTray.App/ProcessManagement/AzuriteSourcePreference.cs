@@ -14,18 +14,18 @@ internal sealed class AzuriteSourcePreference
 
     public AzuriteSource Load()
     {
-        if (!File.Exists(preferencePath))
+        if (!File.Exists(this.preferencePath))
         {
             return DefaultPreference;
         }
 
-        var value = File.ReadAllText(preferencePath).Trim();
+        var value = File.ReadAllText(this.preferencePath).Trim();
         return Enum.TryParse(value, ignoreCase: true, out AzuriteSource source) && Enum.IsDefined(source) ? source : DefaultPreference;
     }
 
     public void Save(AzuriteSource source)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(preferencePath)!);
-        File.WriteAllText(preferencePath, source.ToString());
+        Directory.CreateDirectory(Path.GetDirectoryName(this.preferencePath)!);
+        File.WriteAllText(this.preferencePath, source.ToString());
     }
 }

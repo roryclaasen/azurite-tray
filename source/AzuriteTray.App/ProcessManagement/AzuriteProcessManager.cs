@@ -24,10 +24,10 @@ internal abstract class AzuriteProcessManager
 
     protected AzuriteProcessManager(AzuriteSource source, string displayName)
     {
-        Source = source;
-        DisplayName = displayName;
-        DataDirectory = @"C:\azurite";
-        DebugLogPath = Path.Combine(DataDirectory, "debug.log");
+        this.Source = source;
+        this.DisplayName = displayName;
+        this.DataDirectory = @"C:\azurite";
+        this.DebugLogPath = Path.Combine(this.DataDirectory, "debug.log");
     }
 
     public AzuriteSource Source { get; }
@@ -42,22 +42,22 @@ internal abstract class AzuriteProcessManager
 
     protected abstract string ProcessName { get; }
 
-    public bool IsRunning() => GetAzuriteProcessIds().Count > 0;
+    public bool IsRunning() => this.GetAzuriteProcessIds().Count > 0;
 
     public bool Start()
     {
-        if (IsRunning())
+        if (this.IsRunning())
         {
             return false;
         }
 
-        var target = ResolveLaunchTarget();
-        Directory.CreateDirectory(DataDirectory);
+        var target = this.ResolveLaunchTarget();
+        Directory.CreateDirectory(this.DataDirectory);
 
         var startInfo = new ProcessStartInfo
         {
             FileName = target.FileName,
-            WorkingDirectory = DataDirectory,
+            WorkingDirectory = this.DataDirectory,
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden
@@ -71,16 +71,16 @@ internal abstract class AzuriteProcessManager
         startInfo.ArgumentList.Add("--skipApiVersionCheck");
         startInfo.ArgumentList.Add("-s");
         startInfo.ArgumentList.Add("-l");
-        startInfo.ArgumentList.Add(DataDirectory);
+        startInfo.ArgumentList.Add(this.DataDirectory);
         startInfo.ArgumentList.Add("-d");
-        startInfo.ArgumentList.Add(DebugLogPath);
+        startInfo.ArgumentList.Add(this.DebugLogPath);
 
-        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException($"{DisplayName} Azurite did not start.");
+        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException($"{this.DisplayName} Azurite did not start.");
         if (process.WaitForExit(milliseconds: 1000))
         {
             throw new InvalidOperationException(
                 $"Azurite exited during startup with code {process.ExitCode.ToString(CultureInfo.InvariantCulture)}. " +
-                $"Review '{DebugLogPath}' for details.");
+                $"Review '{this.DebugLogPath}' for details.");
         }
 
         return true;
@@ -88,7 +88,7 @@ internal abstract class AzuriteProcessManager
 
     public async Task<bool> StopAsync(CancellationToken cancellationToken)
     {
-        var processIds = GetAzuriteProcessIds();
+        var processIds = this.GetAzuriteProcessIds();
         if (processIds.Count == 0)
         {
             return false;
@@ -153,7 +153,7 @@ internal abstract class AzuriteProcessManager
 
     private List<int> GetAzuriteProcessIds()
     {
-        var normalizedPaths = GetIdentityPaths()
+        var normalizedPaths = this.GetIdentityPaths()
             .Where(File.Exists)
             .Select(NormalizePath)
             .ToArray();
@@ -164,7 +164,7 @@ internal abstract class AzuriteProcessManager
         }
 
         var processIds = new List<int>();
-        foreach (var process in Process.GetProcessesByName(ProcessName).ToDisposableList())
+        foreach (var process in Process.GetProcessesByName(this.ProcessName).ToDisposableList())
         {
             var commandLine = TryGetCommandLine(process.Id);
             if (commandLine is null)
