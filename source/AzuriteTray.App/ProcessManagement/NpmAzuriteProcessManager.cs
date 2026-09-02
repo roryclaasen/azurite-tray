@@ -39,8 +39,7 @@ internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(Azurite
 
         foreach (string directory in GetPathDirectories())
         {
-            string commandPath = Path.Combine(directory, "azurite.cmd");
-
+            var commandPath = Path.Combine(directory, "azurite.cmd");
             if (File.Exists(commandPath))
             {
                 candidates.Add(Path.GetFullPath(Path.Combine(directory, AzuriteScriptRelativePath)));
