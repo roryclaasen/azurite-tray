@@ -71,7 +71,7 @@ internal sealed class AzuriteProcessManager
         using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Node.js did not start.");
 
-        if (process.WaitForExit(milliseconds: 1000))
+        if (process.WaitForExit(TimeSpan.FromSeconds(1)))
         {
             throw new InvalidOperationException(
                 $"Azurite exited during startup with code {process.ExitCode.ToString(CultureInfo.InvariantCulture)}. " +
