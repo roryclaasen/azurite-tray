@@ -34,6 +34,8 @@ internal abstract class AzuriteProcessManager : IAzuriteProcessManager
 
     public string DisplayName { get; }
 
+    public string? Version { get; protected set; }
+
     public string DataDirectory { get; }
 
     public string DebugLogPath { get; }

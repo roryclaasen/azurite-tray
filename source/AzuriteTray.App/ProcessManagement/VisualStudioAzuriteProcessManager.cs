@@ -7,13 +7,19 @@ using System.Diagnostics;
 using System.IO;
 using AzuriteTray.Core;
 
-internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManager(AzuriteSource.VisualStudio, "Visual Studio")
+internal sealed class VisualStudioAzuriteProcessManager : AzuriteProcessManager
 {
     private const string AzuriteRelativePath = @"Common7\IDE\Extensions\Microsoft\Azure Storage Emulator\azurite.exe";
 
+    public VisualStudioAzuriteProcessManager() : base(AzuriteSource.VisualStudio, "Visual Studio")
+    {
+        this.IdentityPath = FindAzuriteExecutable();
+        this.Version = this.IdentityPath is null ? null : FileVersionInfo.GetVersionInfo(this.IdentityPath).ProductVersion;
+    }
+
     protected override string ProcessName => "azurite";
 
-    protected override string? IdentityPath { get; } = FindAzuriteExecutable();
+    protected override string? IdentityPath { get; }
 
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {

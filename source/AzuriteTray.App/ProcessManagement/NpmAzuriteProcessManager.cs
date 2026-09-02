@@ -3,20 +3,28 @@
 namespace AzuriteTray.App.ProcessManagement;
 
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Text.Json;
 using AzuriteTray.Core;
 
-internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(AzuriteSource.Npm, "npm")
+internal sealed class NpmAzuriteProcessManager : AzuriteProcessManager
 {
     private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
+
+    public NpmAzuriteProcessManager() : base(AzuriteSource.Npm, "NPM")
+    {
+        this.IdentityPath = FindAzuriteScript();
+        this.Version = this.IdentityPath is null ? null : FindVersion(this.IdentityPath);
+    }
 
     public override bool IsAvailable => base.IsAvailable && FindExecutable("node.exe") is not null;
 
     protected override string ProcessName => "node";
 
     [MemberNotNullWhen(true, nameof(IsAvailable))]
-    protected override string? IdentityPath { get; } = FindAzuriteScript();
+    protected override string? IdentityPath { get; }
 
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {
@@ -53,5 +61,27 @@ internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(Azurite
         }
 
         return null;
+    }
+
+    private static string? FindVersion(string scriptPath)
+    {
+        var scriptDirectory = Path.GetDirectoryName(scriptPath) ?? throw new InvalidOperationException("The npm Azurite script path has no directory.");
+        var packagePath = Path.GetFullPath( Path.Combine(scriptDirectory, "..", "..", "package.json"));
+        if (!File.Exists(packagePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            using FileStream stream = File.OpenRead(packagePath);
+            using JsonDocument document = JsonDocument.Parse(stream);
+            return document.RootElement.TryGetProperty("version", out JsonElement version) ? version.GetString() : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            Debug.WriteLine($"Could not read the npm Azurite version: {exception}");
+            return null;
+        }
     }
 }

@@ -201,6 +201,8 @@ public sealed class AzuriteSourceControllerTests(TestContext testContext)
 
         public string DisplayName => this.Source.ToString();
 
+        public string? Version => null;
+
         public bool IsAvailable { get; } = isAvailable;
 
         public bool IsRunningResult { get; set; }

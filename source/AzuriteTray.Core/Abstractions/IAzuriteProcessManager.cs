@@ -11,6 +11,8 @@ public interface IAzuriteProcessManager
 
     string DisplayName { get; }
 
+    string? Version { get; }
+
     bool IsAvailable { get; }
 
     bool IsRunning();

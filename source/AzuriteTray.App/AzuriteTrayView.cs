@@ -28,7 +28,8 @@ internal sealed class AzuriteTrayView : IDisposable
         var sourceItems = new Dictionary<AzuriteSource, PopupMenuItem>();
         foreach (IAzuriteProcessManager manager in processManagers.Values)
         {
-            var sourceItem = new PopupMenuItem(manager.DisplayName, (_, _) => changeSource.Invoke(manager.Source));
+            var label = string.IsNullOrWhiteSpace(manager.Version) ? manager.DisplayName : $"{manager.DisplayName} ({manager.Version})";
+            var sourceItem = new PopupMenuItem(label, (_, _) => changeSource.Invoke(manager.Source));
             sourceItems.Add(manager.Source, sourceItem);
             sourceMenu.Items.Add(sourceItem);
         }
