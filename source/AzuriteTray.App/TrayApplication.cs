@@ -21,8 +21,7 @@ internal sealed class TrayApplication : IDisposable
     private readonly TrayIconWithContextMenu trayIcon;
     private readonly PopupMenuItem startItem;
     private readonly PopupMenuItem stopItem;
-    private readonly PopupMenuItem npmSourceItem;
-    private readonly PopupMenuItem visualStudioSourceItem;
+    private readonly IReadOnlyDictionary<AzuriteSource, PopupMenuItem> sourceItems;
     private readonly Icon icon;
     private readonly Timer statusTimer;
     private readonly EventWaitHandle activationEvent;
@@ -37,7 +36,9 @@ internal sealed class TrayApplication : IDisposable
 
     public TrayApplication(IEnumerable<AzuriteProcessManager> processManagers, AzuriteSourcePreference sourcePreference, EventWaitHandle activationEvent)
     {
+        ArgumentOutOfRangeException.ThrowIfZero(processManagers.Count(), nameof(processManagers));
         this.processManagers = processManagers.ToDictionary(manager => manager.Source);
+
         this.sourcePreference = sourcePreference;
         this.activationEvent = activationEvent;
         this.selectedSource = this.SelectInitialSource(sourcePreference.Load());
@@ -48,8 +49,17 @@ internal sealed class TrayApplication : IDisposable
 
         this.startItem = new PopupMenuItem("Start Azurite", (_, _) => _ = this.StartAsync());
         this.stopItem = new PopupMenuItem("Stop Azurite", (_, _) => _ = this.StopAsync());
-        this.npmSourceItem = new PopupMenuItem("npm", (_, _) => _ = this.ChangeSourceAsync(AzuriteSource.Npm));
-        this.visualStudioSourceItem = new PopupMenuItem("Visual Studio", (_, _) => _ = this.ChangeSourceAsync(AzuriteSource.VisualStudio));
+        var sourceMenu = new PopupSubMenu("Azurite source");
+        var sourceItems = new Dictionary<AzuriteSource, PopupMenuItem>();
+
+        foreach (AzuriteProcessManager manager in this.processManagers.Values)
+        {
+            var sourceItem = new PopupMenuItem(manager.DisplayName, (_, _) => _ = this.ChangeSourceAsync(manager.Source));
+            sourceItems.Add(manager.Source, sourceItem);
+            sourceMenu.Items.Add(sourceItem);
+        }
+
+        this.sourceItems = sourceItems;
 
         this.trayIcon = new TrayIconWithContextMenu("AzuriteTray")
         {
@@ -62,25 +72,14 @@ internal sealed class TrayApplication : IDisposable
                     this.startItem,
                     this.stopItem,
                     new PopupMenuSeparator(),
-                    new PopupSubMenu("Azurite source")
-                    {
-                        Items =
-                        {
-                            this.npmSourceItem,
-                            this.visualStudioSourceItem
-                        }
-                    },
+                    sourceMenu,
                     new PopupMenuSeparator(),
                     new PopupMenuItem("Exit", (_, _) => _ = this.ExitAsync())
                 }
             }
         };
 
-        this.statusTimer = new Timer(
-            static state => _ = ((TrayApplication)state!).RefreshStatusAsync(),
-            this,
-            Timeout.InfiniteTimeSpan,
-            Timeout.InfiniteTimeSpan);
+        this.statusTimer = new Timer(static state => _ = ((TrayApplication)state!).RefreshStatusAsync(), this, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     public void Run()
@@ -100,6 +99,7 @@ internal sealed class TrayApplication : IDisposable
             this,
             Timeout.Infinite,
             executeOnlyOnce: false);
+
         this.statusTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(1));
         this.exitSignal.Wait();
     }
@@ -195,12 +195,13 @@ internal sealed class TrayApplication : IDisposable
     private async Task ChangeSourceAsync(AzuriteSource source)
     {
         await this.operationLock.WaitAsync().ConfigureAwait(false);
-        AzuriteSource previousSource = this.selectedSource;
-        AzuriteProcessManager currentManager = this.SelectedProcessManager;
-        AzuriteProcessManager newManager = this.processManagers[source];
-        bool restart = false;
-        bool newManagerStarted = false;
-        bool preferenceWriteAttempted = false;
+
+        var previousSource = this.selectedSource;
+        var currentManager = this.SelectedProcessManager;
+        var newManager = this.processManagers[source];
+        var restart = false;
+        var newManagerStarted = false;
+        var preferenceWriteAttempted = false;
 
         try
         {
@@ -211,8 +212,7 @@ internal sealed class TrayApplication : IDisposable
 
             if (!newManager.IsAvailable)
             {
-                throw new InvalidOperationException(
-                    $"{newManager.DisplayName} Azurite is not installed.");
+                throw new InvalidOperationException($"{newManager.DisplayName} Azurite is not installed.");
             }
 
             this.SetOperationInProgress(true);
@@ -228,13 +228,11 @@ internal sealed class TrayApplication : IDisposable
             this.sourcePreference.Save(source);
             this.selectedSource = source;
 
-            this.ShowNotification(
-                $"Using {newManager.DisplayName} Azurite.",
-                NotificationIcon.Info);
+            this.ShowNotification($"Using {newManager.DisplayName} Azurite.", NotificationIcon.Info);
         }
         catch (Exception exception)
         {
-            Exception failure = await this.RollbackSourceChangeAsync(
+            var failure = await this.RollbackSourceChangeAsync(
                 exception,
                 previousSource,
                 currentManager,
@@ -242,6 +240,7 @@ internal sealed class TrayApplication : IDisposable
                 restart,
                 newManagerStarted,
                 preferenceWriteAttempted);
+
             this.ShowError("The Azurite source could not be changed.", failure);
         }
         finally
@@ -300,9 +299,7 @@ internal sealed class TrayApplication : IDisposable
             }
         }
 
-        return failures.Count == 1
-            ? switchException
-            : new AggregateException("The source change and its rollback both failed.", failures);
+        return failures.Count == 1 ? switchException : new AggregateException("The source change and its rollback both failed.", failures);
     }
 
     private async Task RefreshStatusAsync()
@@ -319,8 +316,7 @@ internal sealed class TrayApplication : IDisposable
             this.startItem.Enabled = !running && manager.IsAvailable;
             this.stopItem.Enabled = running;
             this.UpdateSourceMenu();
-            this.trayIcon.UpdateToolTip(
-                $"Azurite ({manager.DisplayName}) - {(running ? "Running" : "Stopped")}");
+            this.trayIcon.UpdateToolTip($"Azurite ({manager.DisplayName}) - {(running ? "Running" : "Stopped")}");
             this.statusErrorReported = false;
         }
         catch (Exception exception)
@@ -343,29 +339,32 @@ internal sealed class TrayApplication : IDisposable
 
     private AzuriteSource SelectInitialSource(AzuriteSource preferredSource)
     {
-        if (this.processManagers[preferredSource].IsAvailable)
+        if (this.processManagers.TryGetValue(preferredSource, out AzuriteProcessManager? preferredManager) && preferredManager.IsAvailable)
         {
             return preferredSource;
         }
 
-        return this.processManagers.Values.FirstOrDefault(manager => manager.IsAvailable)?.Source
-            ?? preferredSource;
+        return this.processManagers.Values.FirstOrDefault(manager => manager.IsAvailable)?.Source ?? this.processManagers.Values.First().Source;
     }
 
     private void UpdateSourceMenu()
     {
-        this.npmSourceItem.Checked = this.selectedSource == AzuriteSource.Npm;
-        this.visualStudioSourceItem.Checked = this.selectedSource == AzuriteSource.VisualStudio;
-        this.npmSourceItem.Enabled = this.processManagers[AzuriteSource.Npm].IsAvailable;
-        this.visualStudioSourceItem.Enabled = this.processManagers[AzuriteSource.VisualStudio].IsAvailable;
+        foreach ((AzuriteSource source, PopupMenuItem item) in this.sourceItems)
+        {
+            item.Checked = this.selectedSource == source;
+            item.Enabled = this.processManagers[source].IsAvailable;
+        }
     }
 
     private void SetOperationInProgress(bool value)
     {
         this.startItem.Enabled = !value;
         this.stopItem.Enabled = !value;
-        this.npmSourceItem.Enabled = !value;
-        this.visualStudioSourceItem.Enabled = !value;
+
+        foreach ((AzuriteSource source, PopupMenuItem item) in this.sourceItems)
+        {
+            item.Enabled = !value && this.processManagers[source].IsAvailable;
+        }
     }
 
     private void ShowNotification(string message, NotificationIcon notificationIcon)
@@ -393,6 +392,5 @@ internal sealed class TrayApplication : IDisposable
         }
     }
 
-    private void ShowError(string message, Exception exception) =>
-        this.ShowNotification($"{message} {exception.Message}", NotificationIcon.Error);
+    private void ShowError(string message, Exception exception) => this.ShowNotification($"{message} {exception.Message}", NotificationIcon.Error);
 }

@@ -13,19 +13,17 @@ internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManage
 {
     private const string AzuriteRelativePath = @"Common7\IDE\Extensions\Microsoft\Azure Storage Emulator\azurite.exe";
 
-    private readonly string[] azuriteExecutableCandidates = [.. FindAzuriteExecutableCandidates()];
-
-    public override bool IsAvailable => this.azuriteExecutableCandidates.Any(File.Exists);
+    public override bool IsAvailable => this.IdentityPaths.Any(File.Exists);
 
     protected override string ProcessName => "azurite";
 
+    protected override IEnumerable<string> IdentityPaths { get; } = FindAzuriteExecutableCandidates();
+
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {
-        var executablePath = this.azuriteExecutableCandidates.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("Visual Studio Azurite was not found. Install the Azure development workload in Visual Studio.");
+        var executablePath = this.IdentityPaths.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("Visual Studio Azurite was not found. Install the Azure development workload in Visual Studio.");
         return new AzuriteLaunchTarget(executablePath, []);
     }
-
-    protected override IEnumerable<string> GetIdentityPaths() => this.azuriteExecutableCandidates;
 
     private static HashSet<string> FindAzuriteExecutableCandidates()
     {

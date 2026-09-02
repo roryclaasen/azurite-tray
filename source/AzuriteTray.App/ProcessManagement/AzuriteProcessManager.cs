@@ -12,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AzuriteTray.Core;
 using AzuriteTray.Core.Extensions;
-using Microsoft.Win32.SafeHandles;
 using Windows.Wdk.System.Threading;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -41,6 +40,8 @@ internal abstract class AzuriteProcessManager
     public abstract bool IsAvailable { get; }
 
     protected abstract string ProcessName { get; }
+
+    protected abstract IEnumerable<string> IdentityPaths { get; }
 
     public bool IsRunning() => this.GetAzuriteProcessIds().Count > 0;
 
@@ -75,8 +76,8 @@ internal abstract class AzuriteProcessManager
         startInfo.ArgumentList.Add("-d");
         startInfo.ArgumentList.Add(this.DebugLogPath);
 
-        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException($"{this.DisplayName} Azurite did not start.");
-        if (process.WaitForExit(milliseconds: 1000))
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"{this.DisplayName} Azurite did not start.");
+        if (process.WaitForExit(TimeSpan.FromSeconds(1)))
         {
             throw new InvalidOperationException(
                 $"Azurite exited during startup with code {process.ExitCode.ToString(CultureInfo.InvariantCulture)}. " +
@@ -117,8 +118,6 @@ internal abstract class AzuriteProcessManager
 
     protected abstract AzuriteLaunchTarget ResolveLaunchTarget();
 
-    protected abstract IEnumerable<string> GetIdentityPaths();
-
     protected static string? FindExecutable(string fileName)
     {
         foreach (string directory in GetPathDirectories())
@@ -153,11 +152,7 @@ internal abstract class AzuriteProcessManager
 
     private List<int> GetAzuriteProcessIds()
     {
-        var normalizedPaths = this.GetIdentityPaths()
-            .Where(File.Exists)
-            .Select(NormalizePath)
-            .ToArray();
-
+        var normalizedPaths = this.IdentityPaths.Where(File.Exists).Select(NormalizePath).ToArray();
         if (normalizedPaths.Length == 0)
         {
             return [];
@@ -180,23 +175,19 @@ internal abstract class AzuriteProcessManager
         }
 
         return processIds;
-    }
 
-    private static string NormalizePath(string value) => value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Replace(@"\\", @"\", StringComparison.Ordinal);
+        static string NormalizePath(string value) => value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Replace(@"\\", @"\", StringComparison.Ordinal);
+    }
 
     private static unsafe string? TryGetCommandLine(int processId)
     {
-        using SafeFileHandle processHandle = PInvoke.OpenProcess_SafeHandle(
-            PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION,
-            bInheritHandle: false,
-            (uint)processId);
-
+        using var processHandle = PInvoke.OpenProcess_SafeHandle(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, bInheritHandle: false, (uint)processId);
         if (processHandle.IsInvalid)
         {
             return null;
         }
 
-        var process = (HANDLE)processHandle.DangerousGetHandle();
+        var process = new HANDLE(processHandle.DangerousGetHandle());
         uint requiredLength = 0;
 
         if (Windows.Wdk.PInvoke.NtQueryInformationProcess(
