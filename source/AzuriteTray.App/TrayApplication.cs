@@ -100,7 +100,7 @@ internal sealed class TrayApplication : IDisposable
             Timeout.Infinite,
             executeOnlyOnce: false);
 
-        this.statusTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        this.statusTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(5));
         this.exitSignal.Wait();
     }
 
