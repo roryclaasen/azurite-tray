@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="../Directory.Build.props" />
+
+  <PropertyGroup>
+    <Product>Azurite Tray Tests</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)/MSTestSettings.cs" Link="MSTestSettings.cs" Visible="False" />
+    <Compile Include="$(MSBuildThisFileDirectory)/Usings.cs" Link="Usings.cs" Visible="False" />
+  </ItemGroup>
+</Project>

@@ -1,19 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="MSTest" />
-  </ItemGroup>
+﻿<Project Sdk="MSTest.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\..\source\AzuriteTray.Core\AzuriteTray.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
   </ItemGroup>
 
 </Project>

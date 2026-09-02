@@ -1,9 +1,19 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="version.json" />
+  </Folder>
   <Folder Name="/source/">
+    <File Path="source/Source.Build.props" />
     <Project Path="source/AzuriteTray.App/AzuriteTray.App.csproj" />
     <Project Path="source/AzuriteTray.Core/AzuriteTray.Core.csproj" Id="41fe1770-e755-4baf-a9b0-6af8ad24c94e" />
   </Folder>
   <Folder Name="/tests/">
+    <File Path="tests/MSTestSettings.cs" />
+    <File Path="tests/Tests.Build.props" />
+    <File Path="tests/Usings.cs" />
     <Project Path="tests/AzuriteTray.Core.Tests/AzuriteTray.Core.Tests.csproj" />
   </Folder>
 </Solution>
