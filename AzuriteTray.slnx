@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/source/">
+    <Project Path="source/AzuriteTray.App/AzuriteTray.App.csproj" />
+  </Folder>
+</Solution>
