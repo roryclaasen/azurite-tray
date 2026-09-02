@@ -160,7 +160,8 @@ internal abstract class AzuriteProcessManager
 
         var normalizedIdentityPath = NormalizePath(this.IdentityPath);
         var processIds = new List<int>();
-        foreach (var process in Process.GetProcessesByName(this.ProcessName).ToDisposableList())
+        using var processes = Process.GetProcessesByName(this.ProcessName).ToDisposableList();
+        foreach (var process in processes)
         {
             var commandLine = TryGetCommandLine(process.Id);
             if (commandLine is null)
