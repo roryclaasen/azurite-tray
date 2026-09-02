@@ -1,9 +1,9 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
+namespace AzuriteTray.App;
+
 using System;
 using System.Threading;
-
-namespace AzuriteTray.App;
 
 internal static class Program
 {

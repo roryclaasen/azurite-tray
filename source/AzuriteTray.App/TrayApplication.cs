@@ -1,12 +1,12 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
+namespace AzuriteTray.App;
+
 using System;
 using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
 using H.NotifyIcon.Core;
-
-namespace AzuriteTray.App;
 
 internal sealed class TrayApplication : IDisposable
 {

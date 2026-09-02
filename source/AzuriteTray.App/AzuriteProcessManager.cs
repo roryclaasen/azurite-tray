@@ -1,5 +1,7 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
+namespace AzuriteTray.App;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,8 +15,6 @@ using Windows.Wdk.System.Threading;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
-
-namespace AzuriteTray.App;
 
 internal sealed class AzuriteProcessManager
 {
