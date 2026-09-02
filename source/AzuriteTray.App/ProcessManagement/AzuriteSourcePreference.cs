@@ -4,6 +4,7 @@ namespace AzuriteTray.App.ProcessManagement;
 
 using System;
 using System.IO;
+using AzuriteTray.Core;
 
 internal sealed class AzuriteSourcePreference
 {

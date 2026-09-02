@@ -9,7 +9,7 @@ using System.Collections.Generic;
 /// Represents a List of <see cref="IDisposable"/> items.
 /// </summary>
 /// <typeparam name="T">The type for the items stored in the collection.</typeparam>
-public class DisposableList<T>(IEnumerable<T> values) : List<T>(values), IDisposable
+public sealed class DisposableList<T>(IEnumerable<T> values) : List<T>(values), IDisposable
 {
     /// <inheritdoc/>
     public void Dispose()

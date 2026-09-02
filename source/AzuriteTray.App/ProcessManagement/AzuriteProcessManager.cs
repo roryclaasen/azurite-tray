@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AzuriteTray.Core;
 using AzuriteTray.Core.Extensions;
 using Microsoft.Win32.SafeHandles;
 using Windows.Wdk.System.Threading;

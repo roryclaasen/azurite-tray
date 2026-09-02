@@ -1,8 +1,8 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
-namespace AzuriteTray.App.ProcessManagement;
+namespace AzuriteTray.Core;
 
-internal enum AzuriteSource
+public enum AzuriteSource
 {
     Npm,
     VisualStudio
