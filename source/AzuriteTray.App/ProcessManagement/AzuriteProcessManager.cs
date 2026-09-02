@@ -128,8 +128,7 @@ internal abstract class AzuriteProcessManager
     {
         foreach (string directory in GetPathDirectories())
         {
-            string path = Path.Combine(directory, fileName);
-
+            var path = Path.Combine(directory, fileName);
             if (File.Exists(path))
             {
                 return path;

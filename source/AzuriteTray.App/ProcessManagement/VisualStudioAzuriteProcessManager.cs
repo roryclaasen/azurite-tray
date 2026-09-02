@@ -4,6 +4,7 @@ namespace AzuriteTray.App.ProcessManagement;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -28,8 +29,13 @@ internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManage
     private static HashSet<string> FindAzuriteExecutableCandidates()
     {
         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var visualStudioDirectory = Environment.GetEnvironmentVariable("VSINSTALLDIR");
+        if (FindVSWhereExecutable() is string vsWherePath)
+        {
+            AddVsWhereCandidates(candidates, vsWherePath);
+            return candidates;
+        }
 
+        var visualStudioDirectory = Environment.GetEnvironmentVariable("VSINSTALLDIR");
         if (!string.IsNullOrWhiteSpace(visualStudioDirectory))
         {
             candidates.Add(Path.GetFullPath(Path.Combine(visualStudioDirectory, AzuriteRelativePath)));
@@ -41,10 +47,42 @@ internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManage
         return candidates;
     }
 
+    private static void AddVsWhereCandidates(HashSet<string> candidates, string vsWherePath)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = vsWherePath,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        startInfo.ArgumentList.Add("-all");
+        startInfo.ArgumentList.Add("-products");
+        startInfo.ArgumentList.Add("*");
+        startInfo.ArgumentList.Add("-property");
+        startInfo.ArgumentList.Add("installationPath");
+
+        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("vswhere.exe did not start.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"vswhere.exe exited with code {process.ExitCode}: {error.Trim()}");
+        }
+
+        foreach (var installationPath in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            candidates.Add(Path.GetFullPath(Path.Combine(installationPath, AzuriteRelativePath)));
+        }
+    }
+
     private static void AddCandidates(HashSet<string> candidates, string programFilesDirectory)
     {
         var visualStudioRoot = Path.Combine(programFilesDirectory, "Microsoft Visual Studio");
-
         if (!Directory.Exists(visualStudioRoot))
         {
             return;
@@ -57,5 +95,22 @@ internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManage
                 candidates.Add(Path.GetFullPath(Path.Combine(editionDirectory, AzuriteRelativePath)));
             }
         }
+    }
+
+    private static string? FindVSWhereExecutable()
+    {
+        var vsWherePath = FindExecutable("vswhere.exe");
+        if (vsWherePath is not null)
+        {
+            return vsWherePath;
+        }
+
+        var defaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft Visual Studio", "Installer", "vswhere.exe");
+        if (File.Exists(defaultPath))
+        {
+            return defaultPath;
+        }
+
+        return null;
     }
 }
