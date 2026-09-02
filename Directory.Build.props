@@ -1,7 +1,32 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Product>Azurite Tray</Product>
+    <Authors>Rory Claasen</Authors>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <RepositoryUrl>https://github.com/roryclaasen/advent</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <Nullable>enable</Nullable>
+
+    <IsAotCompatible Condition="'$(IsAotCompatible)'==''">true</IsAotCompatible>
+
+    <DebugType>embedded</DebugType>
+
+    <IsPublishable>false</IsPublishable>
+    <IsPackable>false</IsPackable>
+
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

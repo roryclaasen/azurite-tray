@@ -3,4 +3,8 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.10.91" />
+  </ItemGroup>
 </Project>
