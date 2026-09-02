@@ -1,5 +1,9 @@
 <Solution>
   <Folder Name="/source/">
     <Project Path="source/AzuriteTray.App/AzuriteTray.App.csproj" />
+    <Project Path="source/AzuriteTray.Core/AzuriteTray.Core.csproj" Id="41fe1770-e755-4baf-a9b0-6af8ad24c94e" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AzuriteTray.Core.Tests/AzuriteTray.Core.Tests.csproj" />
   </Folder>
 </Solution>

@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AzuriteTray.Core.Extensions;
 using Microsoft.Win32.SafeHandles;
 using Windows.Wdk.System.Threading;
 using Windows.Win32;
@@ -49,7 +50,7 @@ internal abstract class AzuriteProcessManager
             return false;
         }
 
-        AzuriteLaunchTarget target = ResolveLaunchTarget();
+        var target = ResolveLaunchTarget();
         Directory.CreateDirectory(DataDirectory);
 
         var startInfo = new ProcessStartInfo
@@ -73,9 +74,7 @@ internal abstract class AzuriteProcessManager
         startInfo.ArgumentList.Add("-d");
         startInfo.ArgumentList.Add(DebugLogPath);
 
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"{DisplayName} Azurite did not start.");
-
+        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException($"{DisplayName} Azurite did not start.");
         if (process.WaitForExit(milliseconds: 1000))
         {
             throw new InvalidOperationException(
@@ -88,8 +87,7 @@ internal abstract class AzuriteProcessManager
 
     public async Task<bool> StopAsync(CancellationToken cancellationToken)
     {
-        List<int> processIds = GetAzuriteProcessIds();
-
+        var processIds = GetAzuriteProcessIds();
         if (processIds.Count == 0)
         {
             return false;
@@ -99,11 +97,9 @@ internal abstract class AzuriteProcessManager
         {
             try
             {
-                using Process process = Process.GetProcessById(processId);
+                using var process = Process.GetProcessById(processId);
                 process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(cancellationToken)
-                    .WaitAsync(TimeSpan.FromSeconds(5), cancellationToken)
-                    .ConfigureAwait(false);
+                await process.WaitForExitAsync(cancellationToken).WaitAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             }
             catch (ArgumentException)
             {
@@ -111,9 +107,7 @@ internal abstract class AzuriteProcessManager
             }
             catch (TimeoutException exception)
             {
-                throw new InvalidOperationException(
-                    $"Azurite process {processId.ToString(CultureInfo.InvariantCulture)} did not stop.",
-                    exception);
+                throw new InvalidOperationException($"Azurite process {processId.ToString(CultureInfo.InvariantCulture)} did not stop.", exception);
             }
         }
 
@@ -140,8 +134,7 @@ internal abstract class AzuriteProcessManager
 
     protected static IEnumerable<string> GetPathDirectories()
     {
-        string? path = Environment.GetEnvironmentVariable("PATH");
-
+        var path = Environment.GetEnvironmentVariable("PATH");
         if (string.IsNullOrWhiteSpace(path))
         {
             yield break;
@@ -149,8 +142,7 @@ internal abstract class AzuriteProcessManager
 
         foreach (string entry in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
-            string directory = Environment.ExpandEnvironmentVariables(entry.Trim().Trim('"'));
-
+            var directory = Environment.ExpandEnvironmentVariables(entry.Trim().Trim('"'));
             if (Directory.Exists(directory))
             {
                 yield return directory;
@@ -160,7 +152,7 @@ internal abstract class AzuriteProcessManager
 
     private List<int> GetAzuriteProcessIds()
     {
-        string[] normalizedPaths = GetIdentityPaths()
+        var normalizedPaths = GetIdentityPaths()
             .Where(File.Exists)
             .Select(NormalizePath)
             .ToArray();
@@ -171,34 +163,25 @@ internal abstract class AzuriteProcessManager
         }
 
         var processIds = new List<int>();
-
-        foreach (Process process in Process.GetProcessesByName(ProcessName))
+        foreach (var process in Process.GetProcessesByName(ProcessName).ToDisposableList())
         {
-            using (process)
+            var commandLine = TryGetCommandLine(process.Id);
+            if (commandLine is null)
             {
-                string? commandLine = TryGetCommandLine(process.Id);
+                continue;
+            }
 
-                if (commandLine is null)
-                {
-                    continue;
-                }
-
-                string normalizedCommandLine = NormalizePath(commandLine);
-
-                if (normalizedPaths.Any(path =>
-                    normalizedCommandLine.Contains(path, StringComparison.OrdinalIgnoreCase)))
-                {
-                    processIds.Add(process.Id);
-                }
+            var normalizedCommandLine = NormalizePath(commandLine);
+            if (normalizedPaths.Any(path => normalizedCommandLine.Contains(path, StringComparison.OrdinalIgnoreCase)))
+            {
+                processIds.Add(process.Id);
             }
         }
 
         return processIds;
     }
 
-    private static string NormalizePath(string value) =>
-        value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
-            .Replace(@"\\", @"\", StringComparison.Ordinal);
+    private static string NormalizePath(string value) => value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).Replace(@"\\", @"\", StringComparison.Ordinal);
 
     private static unsafe string? TryGetCommandLine(int processId)
     {
