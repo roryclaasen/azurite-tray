@@ -6,10 +6,16 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>true</PublishAot>
     <IsPublishable>true</IsPublishable>
+    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Resources\icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="H.NotifyIcon" />
+    <PackageReference Include="H.Resources.Generator" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
     <PackageReference Include="System.Drawing.Common" />
   </ItemGroup>

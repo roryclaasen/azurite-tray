@@ -27,18 +27,12 @@ internal sealed class AzuriteProcessManager
     {
         DataDirectory = @"C:\azurite";
         DebugLogPath = Path.Combine(DataDirectory, "debug.log");
-        azuriteScriptCandidates = FindAzuriteScriptCandidates().ToArray();
-        IconPath = azuriteScriptCandidates
-            .Select(static path => Path.GetFullPath(
-                Path.Combine(Path.GetDirectoryName(path)!, @"..\..\icon.ico")))
-            .FirstOrDefault(File.Exists);
+        azuriteScriptCandidates = [.. FindAzuriteScriptCandidates()];
     }
 
     public string DataDirectory { get; }
 
     public string DebugLogPath { get; }
-
-    public string? IconPath { get; }
 
     public bool IsRunning() => GetAzuriteProcessIds().Count > 0;
 

@@ -24,14 +24,11 @@ internal sealed class TrayApplication : IDisposable
     private bool statusErrorReported;
     private int disposed;
 
-    public TrayApplication(
-        AzuriteProcessManager processManager,
-        EventWaitHandle activationEvent)
+    public TrayApplication(AzuriteProcessManager processManager, EventWaitHandle activationEvent)
     {
         this.processManager = processManager;
-        icon = processManager.IconPath is null
-            ? (Icon)SystemIcons.Application.Clone()
-            : new Icon(processManager.IconPath);
+
+        icon = new Icon(H.Resources.icon_ico.AsStream());
 
         startItem = new PopupMenuItem("Start Azurite", (_, _) => _ = StartAsync());
         stopItem = new PopupMenuItem("Stop Azurite", (_, _) => _ = StopAsync());
@@ -228,8 +225,5 @@ internal sealed class TrayApplication : IDisposable
         }
     }
 
-    private void ShowError(string message, Exception exception)
-    {
-        ShowNotification($"{message} {exception.Message}", NotificationIcon.Error);
-    }
+    private void ShowError(string message, Exception exception) => ShowNotification($"{message} {exception.Message}", NotificationIcon.Error);
 }
