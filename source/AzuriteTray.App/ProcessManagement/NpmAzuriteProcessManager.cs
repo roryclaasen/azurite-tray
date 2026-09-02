@@ -1,37 +1,26 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
-namespace AzuriteTray.App;
+namespace AzuriteTray.App.ProcessManagement;
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-internal sealed class NpmAzuriteProcessManager : AzuriteProcessManager
+internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(AzuriteSource.Npm, "npm")
 {
     private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
 
     private readonly string[] azuriteScriptCandidates = [.. FindAzuriteScriptCandidates()];
 
-    public NpmAzuriteProcessManager()
-        : base(AzuriteSource.Npm, "npm")
-    {
-    }
-
-    public override bool IsAvailable =>
-        azuriteScriptCandidates.Any(File.Exists) &&
-        FindExecutable("node.exe") is not null;
+    public override bool IsAvailable => azuriteScriptCandidates.Any(File.Exists) && FindExecutable("node.exe") is not null;
 
     protected override string ProcessName => "node";
 
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {
-        string azuriteScriptPath = azuriteScriptCandidates.FirstOrDefault(File.Exists)
-            ?? throw new FileNotFoundException(
-                "npm Azurite was not found. Install it with 'npm install --global azurite'.");
-        string nodePath = FindExecutable("node.exe")
-            ?? throw new FileNotFoundException(
-                "Node.js was not found on PATH. Install Node.js before starting npm Azurite.");
+        var azuriteScriptPath = azuriteScriptCandidates.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("npm Azurite was not found. Install it with 'npm install --global azurite'.");
+        var nodePath = FindExecutable("node.exe") ?? throw new FileNotFoundException("Node.js was not found on PATH. Install Node.js before starting npm Azurite.");
 
         return new AzuriteLaunchTarget(nodePath, [azuriteScriptPath]);
     }
@@ -41,7 +30,7 @@ internal sealed class NpmAzuriteProcessManager : AzuriteProcessManager
     private static HashSet<string> FindAzuriteScriptCandidates()
     {
         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
         if (!string.IsNullOrWhiteSpace(appData))
         {

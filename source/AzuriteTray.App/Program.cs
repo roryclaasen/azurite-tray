@@ -4,6 +4,7 @@ namespace AzuriteTray.App;
 
 using System;
 using System.Threading;
+using AzuriteTray.App.ProcessManagement;
 
 internal static class Program
 {

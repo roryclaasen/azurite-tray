@@ -1,6 +1,6 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
-namespace AzuriteTray.App;
+namespace AzuriteTray.App.ProcessManagement;
 
 using System;
 using System.Collections.Generic;

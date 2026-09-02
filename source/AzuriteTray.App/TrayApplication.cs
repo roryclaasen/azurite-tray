@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AzuriteTray.App.ProcessManagement;
 using H.NotifyIcon.Core;
 
 internal sealed class TrayApplication : IDisposable
