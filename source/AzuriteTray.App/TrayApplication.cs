@@ -55,16 +55,13 @@ internal sealed class TrayApplication : IDisposable
             }
         };
 
-        statusTimer = new Timer(
-            static state => _ = ((TrayApplication)state!).RefreshStatusAsync(),
-            this,
-            Timeout.InfiniteTimeSpan,
-            Timeout.InfiniteTimeSpan);
+        statusTimer = new Timer(static state => _ = ((TrayApplication)state!).RefreshStatusAsync(), this, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     public void Run()
     {
         ObjectDisposedException.ThrowIf(disposed != 0, this);
+
         trayIcon.Create();
         activationRegistration = ThreadPool.RegisterWaitForSingleObject(
             activationEvent,
@@ -108,9 +105,7 @@ internal sealed class TrayApplication : IDisposable
 
         try
         {
-            bool started = await Task.Run(processManager.Start);
-
-            if (started)
+            if (await Task.Run(processManager.Start))
             {
                 ShowNotification("Azurite has started.", NotificationIcon.Info);
             }
@@ -127,10 +122,7 @@ internal sealed class TrayApplication : IDisposable
         }
     }
 
-    private async Task StopAsync()
-    {
-        _ = await StopAzuriteAsync(showNotification: true);
-    }
+    private async Task StopAsync() => await StopAzuriteAsync(showNotification: true);
 
     private async Task ExitAsync()
     {
@@ -177,8 +169,7 @@ internal sealed class TrayApplication : IDisposable
 
     private async Task RefreshStatusAsync()
     {
-        if (disposed != 0 ||
-            !await operationLock.WaitAsync(0).ConfigureAwait(false))
+        if (disposed != 0 || !await operationLock.WaitAsync(0).ConfigureAwait(false))
         {
             return;
         }
