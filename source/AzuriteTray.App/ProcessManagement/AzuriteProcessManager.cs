@@ -11,6 +11,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AzuriteTray.Core;
+using AzuriteTray.Core.Abstractions;
 using AzuriteTray.Core.Extensions;
 using Windows.Wdk.System.Threading;
 using Windows.Win32;

@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AzuriteTray.Core;
+using AzuriteTray.Core.Abstractions;
 using H.NotifyIcon.Core;
 
 internal sealed class TrayApplication : IDisposable

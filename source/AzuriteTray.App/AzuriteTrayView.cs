@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using AzuriteTray.Core;
+using AzuriteTray.Core.Abstractions;
 using H.NotifyIcon.Core;
 
 internal sealed class AzuriteTrayView : IDisposable

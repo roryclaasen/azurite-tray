@@ -1,6 +1,6 @@
 // Copyright (c) Rory Claasen. All rights reserved.
 
-namespace AzuriteTray.Core;
+namespace AzuriteTray.Core.Abstractions;
 
 using System.Threading;
 using System.Threading.Tasks;

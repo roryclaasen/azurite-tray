@@ -5,6 +5,7 @@ namespace AzuriteTray.App.ProcessManagement;
 using System;
 using System.IO;
 using AzuriteTray.Core;
+using AzuriteTray.Core.Abstractions;
 
 internal sealed class FileAzuriteSourcePreference : IAzuriteSourcePreference
 {

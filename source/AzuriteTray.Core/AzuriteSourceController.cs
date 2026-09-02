@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AzuriteTray.Core.Abstractions;
 
 public sealed class AzuriteSourceController
 {
