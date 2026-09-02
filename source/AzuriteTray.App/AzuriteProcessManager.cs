@@ -6,15 +6,20 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Management;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace AzuriteTray.App;
 
-internal sealed class AzuriteProcessManager
+internal sealed partial class AzuriteProcessManager
 {
     private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
+    private const uint ProcessQueryLimitedInformation = 0x1000;
+    private const int ProcessCommandLineInformation = 60;
+    private const int StatusInfoLengthMismatch = unchecked((int)0xC0000004);
+    private const uint MaximumCommandLineBytes = 1024 * 1024;
 
     private readonly string[] _azuriteScriptCandidates;
 
@@ -122,15 +127,14 @@ internal sealed class AzuriteProcessManager
         }
 
         var processIds = new List<int>();
-        using var searcher = new ManagementObjectSearcher(
-            "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'node.exe'");
-        using ManagementObjectCollection processes = searcher.Get();
 
-        foreach (ManagementObject process in processes.Cast<ManagementObject>())
+        foreach (Process process in Process.GetProcessesByName("node"))
         {
             using (process)
             {
-                if (process["CommandLine"] is not string commandLine)
+                string? commandLine = TryGetCommandLine(process.Id);
+
+                if (commandLine is null)
                 {
                     continue;
                 }
@@ -140,7 +144,7 @@ internal sealed class AzuriteProcessManager
                 if (normalizedPaths.Any(path =>
                     normalizedCommandLine.Contains(path, StringComparison.OrdinalIgnoreCase)))
                 {
-                    processIds.Add(Convert.ToInt32(process["ProcessId"], CultureInfo.InvariantCulture));
+                    processIds.Add(process.Id);
                 }
             }
         }
@@ -209,4 +213,79 @@ internal sealed class AzuriteProcessManager
     private static string NormalizePath(string value) =>
         value.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
             .Replace(@"\\", @"\", StringComparison.Ordinal);
+
+    private static string? TryGetCommandLine(int processId)
+    {
+        using SafeProcessHandle processHandle = OpenProcess(
+            ProcessQueryLimitedInformation,
+            inheritHandle: false,
+            (uint)processId);
+
+        if (processHandle.IsInvalid)
+        {
+            return null;
+        }
+
+        int status = NtQueryInformationProcess(
+            processHandle,
+            ProcessCommandLineInformation,
+            processInformation: 0,
+            processInformationLength: 0,
+            out uint requiredLength);
+
+        if (status != StatusInfoLengthMismatch ||
+            requiredLength == 0 ||
+            requiredLength > MaximumCommandLineBytes)
+        {
+            return null;
+        }
+
+        nint buffer = Marshal.AllocHGlobal((int)requiredLength);
+
+        try
+        {
+            status = NtQueryInformationProcess(
+                processHandle,
+                ProcessCommandLineInformation,
+                buffer,
+                requiredLength,
+                out _);
+
+            if (status < 0)
+            {
+                return null;
+            }
+
+            UnicodeString commandLine = Marshal.PtrToStructure<UnicodeString>(buffer);
+            return commandLine.Buffer == 0
+                ? null
+                : Marshal.PtrToStringUni(commandLine.Buffer, commandLine.Length / sizeof(char));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial SafeProcessHandle OpenProcess(
+        uint processAccess,
+        [MarshalAs(UnmanagedType.Bool)] bool inheritHandle,
+        uint processId);
+
+    [LibraryImport("ntdll.dll")]
+    private static partial int NtQueryInformationProcess(
+        SafeProcessHandle processHandle,
+        int processInformationClass,
+        nint processInformation,
+        uint processInformationLength,
+        out uint returnLength);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct UnicodeString
+    {
+        public readonly ushort Length;
+        public readonly ushort MaximumLength;
+        public readonly nint Buffer;
+    }
 }
