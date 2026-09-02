@@ -3,37 +3,40 @@
 namespace AzuriteTray.App.ProcessManagement;
 
 using System;
-using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using AzuriteTray.Core;
 
 internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(AzuriteSource.Npm, "npm")
 {
     private const string AzuriteScriptRelativePath = @"node_modules\azurite\dist\src\azurite.js";
 
-    public override bool IsAvailable => this.IdentityPaths.Any(File.Exists) && FindExecutable("node.exe") is not null;
+    public override bool IsAvailable => base.IsAvailable && FindExecutable("node.exe") is not null;
 
     protected override string ProcessName => "node";
 
-    protected override IEnumerable<string> IdentityPaths { get; } = FindAzuriteScriptCandidates();
+    [MemberNotNullWhen(true, nameof(IsAvailable))]
+    protected override string? IdentityPath { get; } = FindAzuriteScript();
 
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {
-        var azuriteScriptPath = this.IdentityPaths.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("npm Azurite was not found. Install it with 'npm install --global azurite'.");
+        var azuriteScriptPath = this.IdentityPath ?? throw new FileNotFoundException("npm Azurite was not found. Install it with 'npm install --global azurite'.");
         var nodePath = FindExecutable("node.exe") ?? throw new FileNotFoundException("Node.js was not found on PATH. Install Node.js before starting npm Azurite.");
 
         return new AzuriteLaunchTarget(nodePath, [azuriteScriptPath]);
     }
 
-    private static HashSet<string> FindAzuriteScriptCandidates()
+    private static string? FindAzuriteScript()
     {
-        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
         if (!string.IsNullOrWhiteSpace(appData))
         {
-            candidates.Add(Path.GetFullPath(Path.Combine(appData, "npm", AzuriteScriptRelativePath)));
+            var appDataPath = Path.GetFullPath(Path.Combine(appData, "npm", AzuriteScriptRelativePath));
+            if (File.Exists(appDataPath))
+            {
+                return appDataPath;
+            }
         }
 
         foreach (string directory in GetPathDirectories())
@@ -41,10 +44,14 @@ internal sealed class NpmAzuriteProcessManager() : AzuriteProcessManager(Azurite
             var commandPath = Path.Combine(directory, "azurite.cmd");
             if (File.Exists(commandPath))
             {
-                candidates.Add(Path.GetFullPath(Path.Combine(directory, AzuriteScriptRelativePath)));
+                var scriptPath = Path.GetFullPath(Path.Combine(directory, AzuriteScriptRelativePath));
+                if (File.Exists(scriptPath))
+                {
+                    return scriptPath;
+                }
             }
         }
 
-        return candidates;
+        return null;
     }
 }

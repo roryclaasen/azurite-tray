@@ -344,7 +344,7 @@ internal sealed class TrayApplication : IDisposable
             return preferredSource;
         }
 
-        return this.processManagers.Values.FirstOrDefault(manager => manager.IsAvailable)?.Source ?? this.processManagers.Values.First().Source;
+        return this.processManagers.Values.FirstOrDefault(static m => m.IsAvailable)?.Source ?? this.processManagers.Values.First().Source;
     }
 
     private void UpdateSourceMenu()

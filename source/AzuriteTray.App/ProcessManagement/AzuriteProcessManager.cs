@@ -5,9 +5,9 @@ namespace AzuriteTray.App.ProcessManagement;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AzuriteTray.Core;
@@ -37,11 +37,12 @@ internal abstract class AzuriteProcessManager
 
     public string DebugLogPath { get; }
 
-    public abstract bool IsAvailable { get; }
+    public virtual bool IsAvailable => this.IdentityPath is not null;
 
     protected abstract string ProcessName { get; }
 
-    protected abstract IEnumerable<string> IdentityPaths { get; }
+    [MemberNotNullWhen(true, nameof(IsAvailable))]
+    protected abstract string? IdentityPath { get; }
 
     public bool IsRunning() => this.GetAzuriteProcessIds().Count > 0;
 
@@ -152,12 +153,12 @@ internal abstract class AzuriteProcessManager
 
     private List<int> GetAzuriteProcessIds()
     {
-        var normalizedPaths = this.IdentityPaths.Where(File.Exists).Select(NormalizePath).ToArray();
-        if (normalizedPaths.Length == 0)
+        if (string.IsNullOrWhiteSpace(this.IdentityPath) || !File.Exists(this.IdentityPath))
         {
             return [];
         }
 
+        var normalizedIdentityPath = NormalizePath(this.IdentityPath);
         var processIds = new List<int>();
         foreach (var process in Process.GetProcessesByName(this.ProcessName).ToDisposableList())
         {
@@ -168,7 +169,7 @@ internal abstract class AzuriteProcessManager
             }
 
             var normalizedCommandLine = NormalizePath(commandLine);
-            if (normalizedPaths.Any(path => normalizedCommandLine.Contains(path, StringComparison.OrdinalIgnoreCase)))
+            if (normalizedCommandLine.Contains(normalizedIdentityPath, StringComparison.OrdinalIgnoreCase))
             {
                 processIds.Add(process.Id);
             }

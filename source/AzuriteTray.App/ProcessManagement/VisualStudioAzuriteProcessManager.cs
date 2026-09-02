@@ -3,50 +3,46 @@
 namespace AzuriteTray.App.ProcessManagement;
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using AzuriteTray.Core;
 
 internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManager(AzuriteSource.VisualStudio, "Visual Studio")
 {
     private const string AzuriteRelativePath = @"Common7\IDE\Extensions\Microsoft\Azure Storage Emulator\azurite.exe";
 
-    public override bool IsAvailable => this.IdentityPaths.Any(File.Exists);
-
     protected override string ProcessName => "azurite";
 
-    protected override IEnumerable<string> IdentityPaths { get; } = FindAzuriteExecutableCandidates();
+    protected override string? IdentityPath { get; } = FindAzuriteExecutable();
 
     protected override AzuriteLaunchTarget ResolveLaunchTarget()
     {
-        var executablePath = this.IdentityPaths.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("Visual Studio Azurite was not found. Install the Azure development workload in Visual Studio.");
+        var executablePath = this.IdentityPath ?? throw new FileNotFoundException("Visual Studio Azurite was not found. Install the Azure development workload in Visual Studio.");
         return new AzuriteLaunchTarget(executablePath, []);
     }
 
-    private static HashSet<string> FindAzuriteExecutableCandidates()
+    private static string? FindAzuriteExecutable()
     {
-        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (FindVSWhereExecutable() is string vsWherePath)
         {
-            AddVsWhereCandidates(candidates, vsWherePath);
-            return candidates;
+            return FindVsWhereAzuriteExecutable(vsWherePath);
         }
 
         var visualStudioDirectory = Environment.GetEnvironmentVariable("VSINSTALLDIR");
         if (!string.IsNullOrWhiteSpace(visualStudioDirectory))
         {
-            candidates.Add(Path.GetFullPath(Path.Combine(visualStudioDirectory, AzuriteRelativePath)));
+            var environmentPath = Path.GetFullPath(Path.Combine(visualStudioDirectory, AzuriteRelativePath));
+            if (File.Exists(environmentPath))
+            {
+                return environmentPath;
+            }
         }
 
-        AddCandidates(candidates, Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
-        AddCandidates(candidates, Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86));
-
-        return candidates;
+        return FindAzuriteExecutable(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))
+            ?? FindAzuriteExecutable(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86));
     }
 
-    private static void AddVsWhereCandidates(HashSet<string> candidates, string vsWherePath)
+    private static string? FindVsWhereAzuriteExecutable(string vsWherePath)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -75,25 +71,37 @@ internal sealed class VisualStudioAzuriteProcessManager() : AzuriteProcessManage
 
         foreach (var installationPath in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            candidates.Add(Path.GetFullPath(Path.Combine(installationPath, AzuriteRelativePath)));
+            var executablePath = Path.GetFullPath(Path.Combine(installationPath, AzuriteRelativePath));
+            if (File.Exists(executablePath))
+            {
+                return executablePath;
+            }
         }
+
+        return null;
     }
 
-    private static void AddCandidates(HashSet<string> candidates, string programFilesDirectory)
+    private static string? FindAzuriteExecutable(string programFilesDirectory)
     {
         var visualStudioRoot = Path.Combine(programFilesDirectory, "Microsoft Visual Studio");
         if (!Directory.Exists(visualStudioRoot))
         {
-            return;
+            return null;
         }
 
         foreach (string versionDirectory in Directory.EnumerateDirectories(visualStudioRoot))
         {
             foreach (string editionDirectory in Directory.EnumerateDirectories(versionDirectory))
             {
-                candidates.Add(Path.GetFullPath(Path.Combine(editionDirectory, AzuriteRelativePath)));
+                var executablePath = Path.GetFullPath(Path.Combine(editionDirectory, AzuriteRelativePath));
+                if (File.Exists(executablePath))
+                {
+                    return executablePath;
+                }
             }
         }
+
+        return null;
     }
 
     private static string? FindVSWhereExecutable()
