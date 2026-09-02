@@ -3,6 +3,8 @@
 
   <PropertyGroup>
     <Product>Azurite Tray Tests</Product>
+
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
