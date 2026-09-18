@@ -73,4 +73,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: azurite-tray-${{ matrix.rid }}
-          path: ${{ github.workspace }}/artifacts/bin/
+          path: |
+            ${{ github.workspace }}/artifacts/bin/
+            !${{ github.workspace }}/artifacts/bin/**/*.pdb
